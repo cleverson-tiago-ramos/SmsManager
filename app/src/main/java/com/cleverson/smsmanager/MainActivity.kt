@@ -11,19 +11,22 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.cleverson.smsmanager.ui.theme.SMSManagerTheme
-import androidx.compose.material3.MenuAnchorType
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-import androidx.compose.ui.Alignment
-import androidx.compose.runtime.saveable.rememberSaveable
 class MainActivity : ComponentActivity() {
 
     companion object {
@@ -43,8 +46,6 @@ class MainActivity : ComponentActivity() {
                     Toast.LENGTH_SHORT
                 ).show()
 
-                Log.d(TAG, "Permissão SEND_SMS concedida")
-
             } else {
 
                 Toast.makeText(
@@ -52,8 +53,6 @@ class MainActivity : ComponentActivity() {
                     "Permissão negada!",
                     Toast.LENGTH_SHORT
                 ).show()
-
-                Log.e(TAG, "Permissão SEND_SMS negada")
             }
         }
 
@@ -74,6 +73,7 @@ class MainActivity : ComponentActivity() {
 
                     TelaSMS(
                         modifier = Modifier.padding(innerPadding),
+
                         onEnviarSMS = { numero, mensagem ->
 
                             enviarSMS(
@@ -109,9 +109,13 @@ class MainActivity : ComponentActivity() {
 
         try {
 
-            Log.d(TAG, "Enviando SMS para: $numero")
+            Log.d(
+                TAG,
+                "Enviando SMS para: $numero"
+            )
 
-            val smsManager = SmsManager.getDefault()
+            val smsManager =
+                SmsManager.getDefault()
 
             val partes =
                 smsManager.divideMessage(mensagem)
@@ -123,8 +127,6 @@ class MainActivity : ComponentActivity() {
                 null,
                 null
             )
-
-            Log.d(TAG, "SMS enviado com sucesso")
 
             Toast.makeText(
                 this,
@@ -148,11 +150,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
 data class Pais(
     val nome: String,
     val codigo: String,
     val bandeira: String
 )
+
+data class HistoricoSMS(
+    val numero: String,
+    val mensagem: String,
+    val horario: String
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TelaSMS(
@@ -163,9 +173,8 @@ fun TelaSMS(
     ) -> Unit
 ) {
 
-
-
     val paises = listOf(
+
         Pais("Brasil", "+55", "🇧🇷"),
         Pais("Estados Unidos", "+1", "🇺🇸"),
         Pais("Portugal", "+351", "🇵🇹"),
@@ -194,6 +203,12 @@ fun TelaSMS(
         mutableStateOf(false)
     }
 
+    var historico by remember {
+        mutableStateOf(
+            listOf<HistoricoSMS>()
+        )
+    }
+
     val focusManager =
         LocalFocusManager.current
 
@@ -206,50 +221,34 @@ fun TelaSMS(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp)
-                .padding(top = 48.dp),
-
-            verticalArrangement =
-                Arrangement.spacedBy(20.dp)
+                .padding(top = 48.dp)
         ) {
 
-            // HEADER
-            Column {
+            Text(
+                text = "SMS Manager",
 
-                Text(
-                    text = "SMS Manager",
-                    style =
-                        MaterialTheme.typography.headlineLarge
-                )
+                style =
+                    MaterialTheme
+                        .typography
+                        .headlineLarge
+            )
 
-                Spacer(
-                    modifier =
-                        Modifier.height(8.dp)
-                )
+            Spacer(
+                modifier =
+                    Modifier.height(8.dp)
+            )
 
-                Text(
-                    text =
-                        "Envie mensagens SMS diretamente pelo dispositivo.",
 
-                    style =
-                        MaterialTheme.typography.bodyMedium,
 
-                    color =
-                        MaterialTheme
-                            .colorScheme
-                            .onSurfaceVariant
-                )
-            }
+            Spacer(
+                modifier =
+                    Modifier.height(8.dp)
+            )
 
             // CARD TELEFONE
             ElevatedCard(
                 modifier =
-                    Modifier.fillMaxWidth(),
-
-                elevation =
-                    CardDefaults
-                        .elevatedCardElevation(
-                            defaultElevation = 6.dp
-                        )
+                    Modifier.fillMaxWidth()
             ) {
 
                 Column(
@@ -258,7 +257,8 @@ fun TelaSMS(
                 ) {
 
                     Text(
-                        text = "Número de telefone",
+                        text =
+                            "Número de telefone",
 
                         style =
                             MaterialTheme
@@ -272,18 +272,18 @@ fun TelaSMS(
                     )
 
                     Row(
-                        verticalAlignment =
-                            Alignment.Top,
-
                         horizontalArrangement =
-                            Arrangement.spacedBy(12.dp)
+                            Arrangement.spacedBy(12.dp),
+
+                        verticalAlignment =
+                            Alignment.Top
                     ) {
 
-                        // SELECT PAÍS
                         ExposedDropdownMenuBox(
                             expanded = expandirPaises,
 
                             onExpandedChange = {
+
                                 expandirPaises =
                                     !expandirPaises
                             }
@@ -297,6 +297,9 @@ fun TelaSMS(
 
                                 readOnly = true,
 
+                                modifier =
+                                    Modifier.width(140.dp),
+
                                 trailingIcon = {
 
                                     ExposedDropdownMenuDefaults
@@ -306,14 +309,6 @@ fun TelaSMS(
                                         )
                                 },
 
-                                modifier =
-                                    Modifier
-                                        .width(145.dp)
-                                        .menuAnchor(
-                                            MenuAnchorType.PrimaryNotEditable,
-                                            true
-                                        ),
-
                                 singleLine = true
                             )
 
@@ -321,6 +316,7 @@ fun TelaSMS(
                                 expanded = expandirPaises,
 
                                 onDismissRequest = {
+
                                     expandirPaises = false
                                 }
                             ) {
@@ -332,7 +328,7 @@ fun TelaSMS(
                                         text = {
 
                                             Text(
-                                                "${pais.bandeira} ${pais.nome} ${pais.codigo}"
+                                                "${pais.bandeira} ${pais.nome}"
                                             )
                                         },
 
@@ -346,7 +342,6 @@ fun TelaSMS(
                             }
                         }
 
-                        // TELEFONE
                         OutlinedTextField(
                             value = numero,
 
@@ -384,24 +379,21 @@ fun TelaSMS(
                                     numero.isEmpty() -> {
 
                                         Text(
-                                            text =
-                                                "Digite o telefone"
+                                            "Digite o telefone"
                                         )
                                     }
 
                                     numero.length < 10 -> {
 
                                         Text(
-                                            text =
-                                                "Número inválido"
+                                            "Número inválido"
                                         )
                                     }
 
                                     else -> {
 
                                         Text(
-                                            text =
-                                                "Número válido"
+                                            "Número válido"
                                         )
                                     }
                                 }
@@ -411,16 +403,15 @@ fun TelaSMS(
                 }
             }
 
+            Spacer(
+                modifier =
+                    Modifier.height(10.dp)
+            )
+
             // CARD MENSAGEM
             ElevatedCard(
                 modifier =
-                    Modifier.fillMaxWidth(),
-
-                elevation =
-                    CardDefaults
-                        .elevatedCardElevation(
-                            defaultElevation = 6.dp
-                        )
+                    Modifier.fillMaxWidth()
             ) {
 
                 Column(
@@ -469,7 +460,7 @@ fun TelaSMS(
 
                     Spacer(
                         modifier =
-                            Modifier.height(14.dp)
+                            Modifier.height(12.dp)
                     )
 
                     LinearProgressIndicator(
@@ -493,15 +484,15 @@ fun TelaSMS(
                         style =
                             MaterialTheme
                                 .typography
-                                .bodySmall,
-
-                        color =
-                            MaterialTheme
-                                .colorScheme
-                                .primary
+                                .bodySmall
                     )
                 }
             }
+
+            Spacer(
+                modifier =
+                    Modifier.height(20.dp)
+            )
 
             // BOTÃO
             Button(
@@ -527,10 +518,33 @@ fun TelaSMS(
 
                             loading = true
 
+                            val numeroCompleto =
+                                "${paisSelecionado.codigo}$numero"
+
                             onEnviarSMS(
-                                "${paisSelecionado.codigo}$numero",
+                                numeroCompleto,
                                 mensagem
                             )
+
+                            val horarioAtual =
+                                SimpleDateFormat(
+                                    "HH:mm:ss",
+                                    Locale.getDefault()
+                                ).format(Date())
+
+                            historico =
+                                listOf(
+                                    HistoricoSMS(
+                                        numero =
+                                            numeroCompleto,
+
+                                        mensagem =
+                                            mensagem,
+
+                                        horario =
+                                            horarioAtual
+                                    )
+                                ) + historico
 
                             numero = ""
                             mensagem = ""
@@ -548,9 +562,7 @@ fun TelaSMS(
                 shape =
                     MaterialTheme
                         .shapes
-                        .extraLarge,
-
-                enabled = !loading
+                        .extraLarge
             ) {
 
                 if (loading) {
@@ -572,6 +584,95 @@ fun TelaSMS(
                                 .typography
                                 .titleMedium
                     )
+                }
+            }
+
+            Spacer(
+                modifier =
+                    Modifier.height(24.dp)
+            )
+
+            Text(
+                text = "Histórico de SMS",
+
+                style =
+                    MaterialTheme
+                        .typography
+                        .headlineSmall
+            )
+
+            Spacer(
+                modifier =
+                    Modifier.height(12.dp)
+            )
+
+            LazyColumn(
+
+                modifier =
+                    Modifier.weight(1f),
+
+                verticalArrangement =
+                    Arrangement.spacedBy(12.dp)
+            ) {
+
+                items(historico) { item ->
+
+                    ElevatedCard(
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    ) {
+
+                        Column(
+                            modifier =
+                                Modifier.padding(16.dp)
+                        ) {
+
+                            Text(
+                                text =
+                                    "📱 ${item.numero}",
+
+                                style =
+                                    MaterialTheme
+                                        .typography
+                                        .titleMedium
+                            )
+
+                            Spacer(
+                                modifier =
+                                    Modifier.height(6.dp)
+                            )
+
+                            Text(
+                                text =
+                                    item.mensagem,
+
+                                style =
+                                    MaterialTheme
+                                        .typography
+                                        .bodyLarge
+                            )
+
+                            Spacer(
+                                modifier =
+                                    Modifier.height(8.dp)
+                            )
+
+                            Text(
+                                text =
+                                    "🕒 ${item.horario}",
+
+                                style =
+                                    MaterialTheme
+                                        .typography
+                                        .bodySmall,
+
+                                color =
+                                    MaterialTheme
+                                        .colorScheme
+                                        .primary
+                            )
+                        }
+                    }
                 }
             }
         }
