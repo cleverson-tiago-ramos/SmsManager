@@ -146,6 +146,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TelaSMS(
     modifier: Modifier = Modifier,
@@ -170,121 +171,234 @@ fun TelaSMS(
     val focusManager =
         LocalFocusManager.current
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(20.dp),
-
-        verticalArrangement =
-            Arrangement.spacedBy(16.dp)
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
 
-        Text(
-            text = "SMS Manager",
-            style = MaterialTheme.typography.headlineLarge
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp)
+                .padding(top = 48.dp),
 
-        OutlinedTextField(
-            value = numero,
-
-            onValueChange = {
-
-                numero = it.filter { c ->
-                    c.isDigit()
-                }
-            },
-
-            label = {
-                Text("Número")
-            },
-
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Phone
-            ),
-
-            modifier = Modifier.fillMaxWidth(),
-
-            singleLine = true
-        )
-
-        OutlinedTextField(
-            value = mensagem,
-
-            onValueChange = {
-
-                if (it.length <= 160) {
-                    mensagem = it
-                }
-            },
-
-            label = {
-                Text("Mensagem")
-            },
-
-            modifier = Modifier.fillMaxWidth(),
-
-            minLines = 4
-        )
-
-        Text(
-            text = "${mensagem.length}/160 caracteres",
-            style = MaterialTheme.typography.bodySmall
-        )
-
-        Button(
-            onClick = {
-
-                focusManager.clearFocus()
-
-                when {
-
-                    numero.isEmpty() -> {
-
-                        return@Button
-                    }
-
-                    numero.length < 10 -> {
-
-                        return@Button
-                    }
-
-                    mensagem.isEmpty() -> {
-
-                        return@Button
-                    }
-
-                    else -> {
-
-                        loading = true
-
-                        onEnviarSMS(
-                            numero,
-                            mensagem
-                        )
-
-                        numero = ""
-                        mensagem = ""
-
-                        loading = false
-                    }
-                }
-            },
-
-            modifier = Modifier.fillMaxWidth(),
-
-            enabled = !loading
+            verticalArrangement =
+                Arrangement.spacedBy(20.dp)
         ) {
 
-            if (loading) {
+            Text(
+                text = "SMS Manager",
+                style =
+                    MaterialTheme.typography.headlineLarge
+            )
 
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp
-                )
+            Text(
+                text =
+                    "Envie mensagens SMS diretamente pelo dispositivo.",
+                style =
+                    MaterialTheme.typography.bodyMedium,
 
-            } else {
+                color =
+                    MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
-                Text("Enviar SMS")
+            ElevatedCard(
+                modifier =
+                    Modifier.fillMaxWidth(),
+
+                elevation =
+                    CardDefaults.elevatedCardElevation(
+                        defaultElevation = 6.dp
+                    )
+            ) {
+
+                Column(
+                    modifier =
+                        Modifier.padding(18.dp)
+                ) {
+
+                    Text(
+                        text = "Número de telefone"
+                    )
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(10.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = numero,
+
+                        onValueChange = {
+
+                            numero =
+                                it.filter { c ->
+                                    c.isDigit()
+                                }
+                        },
+
+                        placeholder = {
+                            Text("5543999999999")
+                        },
+
+                        keyboardOptions =
+                            KeyboardOptions(
+                                keyboardType =
+                                    KeyboardType.Phone
+                            ),
+
+                        modifier =
+                            Modifier.fillMaxWidth(),
+
+                        singleLine = true
+                    )
+                }
+            }
+
+            ElevatedCard(
+                modifier =
+                    Modifier.fillMaxWidth(),
+
+                elevation =
+                    CardDefaults.elevatedCardElevation(
+                        defaultElevation = 6.dp
+                    )
+            ) {
+
+                Column(
+                    modifier =
+                        Modifier.padding(18.dp)
+                ) {
+
+                    Text(
+                        text = "Mensagem"
+                    )
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(10.dp)
+                    )
+
+                    OutlinedTextField(
+                        value = mensagem,
+
+                        onValueChange = {
+
+                            if (it.length <= 160) {
+                                mensagem = it
+                            }
+                        },
+
+                        placeholder = {
+                            Text(
+                                "Digite sua mensagem..."
+                            )
+                        },
+
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .height(180.dp),
+
+                        maxLines = 8
+                    )
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(12.dp)
+                    )
+
+                    LinearProgressIndicator(
+                        progress = {
+                            mensagem.length / 160f
+                        },
+
+                        modifier =
+                            Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(
+                        modifier =
+                            Modifier.height(6.dp)
+                    )
+
+                    Text(
+                        text =
+                            "${mensagem.length}/160 caracteres",
+
+                        style =
+                            MaterialTheme.typography.bodySmall,
+
+                        color =
+                            MaterialTheme
+                                .colorScheme
+                                .primary
+                    )
+                }
+            }
+
+            Button(
+                onClick = {
+
+                    focusManager.clearFocus()
+
+                    when {
+
+                        numero.isEmpty() -> {
+                            return@Button
+                        }
+
+                        numero.length < 10 -> {
+                            return@Button
+                        }
+
+                        mensagem.isEmpty() -> {
+                            return@Button
+                        }
+
+                        else -> {
+
+                            loading = true
+
+                            onEnviarSMS(
+                                numero,
+                                mensagem
+                            )
+
+                            numero = ""
+                            mensagem = ""
+
+                            loading = false
+                        }
+                    }
+                },
+
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(60.dp),
+
+                shape =
+                    MaterialTheme.shapes.extraLarge,
+
+                enabled = !loading
+            ) {
+
+                if (loading) {
+
+                    CircularProgressIndicator(
+                        modifier =
+                            Modifier.size(24.dp),
+
+                        strokeWidth = 2.dp
+                    )
+
+                } else {
+
+                    Text(
+                        text = "Enviar SMS"
+                    )
+                }
             }
         }
     }
