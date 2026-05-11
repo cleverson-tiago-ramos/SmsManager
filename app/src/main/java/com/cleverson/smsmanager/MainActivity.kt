@@ -20,7 +20,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.cleverson.smsmanager.ui.theme.SMSManagerTheme
-
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 class MainActivity : ComponentActivity() {
 
     companion object {
@@ -226,32 +229,101 @@ fun TelaSMS(
                             Modifier.height(10.dp)
                     )
 
-                    OutlinedTextField(
-                        value = numero,
+                    Row(
+                        verticalAlignment =
+                            Alignment.CenterVertically,
 
-                        onValueChange = {
+                        horizontalArrangement =
+                            Arrangement.spacedBy(12.dp)
+                    ) {
 
-                            numero =
-                                it.filter { c ->
-                                    c.isDigit()
+                        Surface(
+                            shape =
+                                RoundedCornerShape(12.dp),
+
+                            tonalElevation = 4.dp,
+
+                            color =
+                                MaterialTheme.colorScheme.primaryContainer
+                        ) {
+
+                            Row(
+                                modifier =
+                                    Modifier.padding(
+                                        horizontal = 14.dp,
+                                        vertical = 16.dp
+                                    ),
+
+                                verticalAlignment =
+                                    Alignment.CenterVertically
+                            ) {
+
+                                Text(
+                                    text = "🇧🇷",
+
+                                    style =
+                                        MaterialTheme.typography.titleLarge
+                                )
+
+                                Spacer(
+                                    modifier =
+                                        Modifier.width(6.dp)
+                                )
+
+                                Text(
+                                    text = "+55",
+
+                                    style =
+                                        MaterialTheme.typography.bodyLarge
+                                )
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = numero,
+
+                            onValueChange = {
+
+                                numero =
+                                    it.filter { c ->
+                                        c.isDigit()
+                                    }
+                            },
+
+                            placeholder = {
+                                Text("(43) 99999-9999")
+                            },
+
+                            keyboardOptions =
+                                KeyboardOptions(
+                                    keyboardType =
+                                        KeyboardType.Phone
+                                ),
+
+                            modifier =
+                                Modifier.weight(1f),
+
+                            singleLine = true,
+
+                            isError =
+                                numero.isNotEmpty() &&
+                                        numero.length < 11,
+
+                            supportingText = {
+
+                                if (
+                                    numero.isNotEmpty() &&
+                                    numero.length < 11
+                                ) {
+
+                                    Text(
+                                        text =
+                                            "Número inválido"
+                                    )
                                 }
-                        },
-
-                        placeholder = {
-                            Text("5543999999999")
-                        },
-
-                        keyboardOptions =
-                            KeyboardOptions(
-                                keyboardType =
-                                    KeyboardType.Phone
-                            ),
-
-                        modifier =
-                            Modifier.fillMaxWidth(),
-
-                        singleLine = true
-                    )
+                            }
+                        )
+                    }
                 }
             }
 
