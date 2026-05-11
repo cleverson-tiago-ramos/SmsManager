@@ -20,10 +20,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.cleverson.smsmanager.ui.theme.SMSManagerTheme
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MenuAnchorType
+
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.saveable.rememberSaveable
 class MainActivity : ComponentActivity() {
 
     companion object {
@@ -148,7 +148,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
+data class Pais(
+    val nome: String,
+    val codigo: String,
+    val bandeira: String
+)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TelaSMS(
@@ -158,6 +162,25 @@ fun TelaSMS(
         String
     ) -> Unit
 ) {
+
+
+
+    val paises = listOf(
+        Pais("Brasil", "+55", "🇧🇷"),
+        Pais("Estados Unidos", "+1", "🇺🇸"),
+        Pais("Portugal", "+351", "🇵🇹"),
+        Pais("Argentina", "+54", "🇦🇷"),
+        Pais("França", "+33", "🇫🇷"),
+        Pais("Alemanha", "+49", "🇩🇪")
+    )
+
+    var paisSelecionado by remember {
+        mutableStateOf(paises[0])
+    }
+
+    var expandirPaises by remember {
+        mutableStateOf(false)
+    }
 
     var numero by remember {
         mutableStateOf("")
@@ -189,30 +212,44 @@ fun TelaSMS(
                 Arrangement.spacedBy(20.dp)
         ) {
 
-            Text(
-                text = "SMS Manager",
-                style =
-                    MaterialTheme.typography.headlineLarge
-            )
+            // HEADER
+            Column {
 
-            Text(
-                text =
-                    "Envie mensagens SMS diretamente pelo dispositivo.",
-                style =
-                    MaterialTheme.typography.bodyMedium,
+                Text(
+                    text = "SMS Manager",
+                    style =
+                        MaterialTheme.typography.headlineLarge
+                )
 
-                color =
-                    MaterialTheme.colorScheme.onSurfaceVariant
-            )
+                Spacer(
+                    modifier =
+                        Modifier.height(8.dp)
+                )
 
+                Text(
+                    text =
+                        "Envie mensagens SMS diretamente pelo dispositivo.",
+
+                    style =
+                        MaterialTheme.typography.bodyMedium,
+
+                    color =
+                        MaterialTheme
+                            .colorScheme
+                            .onSurfaceVariant
+                )
+            }
+
+            // CARD TELEFONE
             ElevatedCard(
                 modifier =
                     Modifier.fillMaxWidth(),
 
                 elevation =
-                    CardDefaults.elevatedCardElevation(
-                        defaultElevation = 6.dp
-                    )
+                    CardDefaults
+                        .elevatedCardElevation(
+                            defaultElevation = 6.dp
+                        )
             ) {
 
                 Column(
@@ -221,64 +258,95 @@ fun TelaSMS(
                 ) {
 
                     Text(
-                        text = "Número de telefone"
+                        text = "Número de telefone",
+
+                        style =
+                            MaterialTheme
+                                .typography
+                                .titleMedium
                     )
 
                     Spacer(
                         modifier =
-                            Modifier.height(10.dp)
+                            Modifier.height(14.dp)
                     )
 
                     Row(
                         verticalAlignment =
-                            Alignment.CenterVertically,
+                            Alignment.Top,
 
                         horizontalArrangement =
                             Arrangement.spacedBy(12.dp)
                     ) {
 
-                        Surface(
-                            shape =
-                                RoundedCornerShape(12.dp),
+                        // SELECT PAÍS
+                        ExposedDropdownMenuBox(
+                            expanded = expandirPaises,
 
-                            tonalElevation = 4.dp,
-
-                            color =
-                                MaterialTheme.colorScheme.primaryContainer
+                            onExpandedChange = {
+                                expandirPaises =
+                                    !expandirPaises
+                            }
                         ) {
 
-                            Row(
-                                modifier =
-                                    Modifier.padding(
-                                        horizontal = 14.dp,
-                                        vertical = 16.dp
-                                    ),
+                            OutlinedTextField(
+                                value =
+                                    "${paisSelecionado.bandeira} ${paisSelecionado.codigo}",
 
-                                verticalAlignment =
-                                    Alignment.CenterVertically
+                                onValueChange = {},
+
+                                readOnly = true,
+
+                                trailingIcon = {
+
+                                    ExposedDropdownMenuDefaults
+                                        .TrailingIcon(
+                                            expanded =
+                                                expandirPaises
+                                        )
+                                },
+
+                                modifier =
+                                    Modifier
+                                        .width(145.dp)
+                                        .menuAnchor(
+                                            MenuAnchorType.PrimaryNotEditable,
+                                            true
+                                        ),
+
+                                singleLine = true
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = expandirPaises,
+
+                                onDismissRequest = {
+                                    expandirPaises = false
+                                }
                             ) {
 
-                                Text(
-                                    text = "🇧🇷",
+                                paises.forEach { pais ->
 
-                                    style =
-                                        MaterialTheme.typography.titleLarge
-                                )
+                                    DropdownMenuItem(
 
-                                Spacer(
-                                    modifier =
-                                        Modifier.width(6.dp)
-                                )
+                                        text = {
 
-                                Text(
-                                    text = "+55",
+                                            Text(
+                                                "${pais.bandeira} ${pais.nome} ${pais.codigo}"
+                                            )
+                                        },
 
-                                    style =
-                                        MaterialTheme.typography.bodyLarge
-                                )
+                                        onClick = {
+
+                                            paisSelecionado = pais
+                                            expandirPaises = false
+                                        }
+                                    )
+                                }
                             }
                         }
 
+                        // TELEFONE
                         OutlinedTextField(
                             value = numero,
 
@@ -291,7 +359,7 @@ fun TelaSMS(
                             },
 
                             placeholder = {
-                                Text("(43) 99999-9999")
+                                Text("43999999999")
                             },
 
                             keyboardOptions =
@@ -307,19 +375,35 @@ fun TelaSMS(
 
                             isError =
                                 numero.isNotEmpty() &&
-                                        numero.length < 11,
+                                        numero.length < 10,
 
                             supportingText = {
 
-                                if (
-                                    numero.isNotEmpty() &&
-                                    numero.length < 11
-                                ) {
+                                when {
 
-                                    Text(
-                                        text =
-                                            "Número inválido"
-                                    )
+                                    numero.isEmpty() -> {
+
+                                        Text(
+                                            text =
+                                                "Digite o telefone"
+                                        )
+                                    }
+
+                                    numero.length < 10 -> {
+
+                                        Text(
+                                            text =
+                                                "Número inválido"
+                                        )
+                                    }
+
+                                    else -> {
+
+                                        Text(
+                                            text =
+                                                "Número válido"
+                                        )
+                                    }
                                 }
                             }
                         )
@@ -327,14 +411,16 @@ fun TelaSMS(
                 }
             }
 
+            // CARD MENSAGEM
             ElevatedCard(
                 modifier =
                     Modifier.fillMaxWidth(),
 
                 elevation =
-                    CardDefaults.elevatedCardElevation(
-                        defaultElevation = 6.dp
-                    )
+                    CardDefaults
+                        .elevatedCardElevation(
+                            defaultElevation = 6.dp
+                        )
             ) {
 
                 Column(
@@ -343,12 +429,17 @@ fun TelaSMS(
                 ) {
 
                     Text(
-                        text = "Mensagem"
+                        text = "Mensagem",
+
+                        style =
+                            MaterialTheme
+                                .typography
+                                .titleMedium
                     )
 
                     Spacer(
                         modifier =
-                            Modifier.height(10.dp)
+                            Modifier.height(12.dp)
                     )
 
                     OutlinedTextField(
@@ -362,6 +453,7 @@ fun TelaSMS(
                         },
 
                         placeholder = {
+
                             Text(
                                 "Digite sua mensagem..."
                             )
@@ -377,7 +469,7 @@ fun TelaSMS(
 
                     Spacer(
                         modifier =
-                            Modifier.height(12.dp)
+                            Modifier.height(14.dp)
                     )
 
                     LinearProgressIndicator(
@@ -391,7 +483,7 @@ fun TelaSMS(
 
                     Spacer(
                         modifier =
-                            Modifier.height(6.dp)
+                            Modifier.height(8.dp)
                     )
 
                     Text(
@@ -399,7 +491,9 @@ fun TelaSMS(
                             "${mensagem.length}/160 caracteres",
 
                         style =
-                            MaterialTheme.typography.bodySmall,
+                            MaterialTheme
+                                .typography
+                                .bodySmall,
 
                         color =
                             MaterialTheme
@@ -409,6 +503,7 @@ fun TelaSMS(
                 }
             }
 
+            // BOTÃO
             Button(
                 onClick = {
 
@@ -433,7 +528,7 @@ fun TelaSMS(
                             loading = true
 
                             onEnviarSMS(
-                                numero,
+                                "${paisSelecionado.codigo}$numero",
                                 mensagem
                             )
 
@@ -451,7 +546,9 @@ fun TelaSMS(
                         .height(60.dp),
 
                 shape =
-                    MaterialTheme.shapes.extraLarge,
+                    MaterialTheme
+                        .shapes
+                        .extraLarge,
 
                 enabled = !loading
             ) {
@@ -468,7 +565,12 @@ fun TelaSMS(
                 } else {
 
                     Text(
-                        text = "Enviar SMS"
+                        text = "Enviar SMS",
+
+                        style =
+                            MaterialTheme
+                                .typography
+                                .titleMedium
                     )
                 }
             }
