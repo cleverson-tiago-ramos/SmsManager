@@ -26,7 +26,12 @@ import com.cleverson.smsmanager.ui.theme.SMSManagerTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
+import android.app.Activity
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 class MainActivity : ComponentActivity() {
 
     companion object {
@@ -117,22 +122,193 @@ class MainActivity : ComponentActivity() {
             val smsManager =
                 SmsManager.getDefault()
 
+            // ACTIONS
+            val SMS_SENT =
+                "SMS_SENT"
+
+            val SMS_DELIVERED =
+                "SMS_DELIVERED"
+
+            // PENDING INTENTS
+            val sentPI =
+                PendingIntent.getBroadcast(
+                    this,
+                    0,
+                    Intent(SMS_SENT),
+                    PendingIntent.FLAG_IMMUTABLE
+                )
+
+            val deliveredPI =
+                PendingIntent.getBroadcast(
+                    this,
+                    0,
+                    Intent(SMS_DELIVERED),
+                    PendingIntent.FLAG_IMMUTABLE
+                )
+
+            // RECEIVER ENVIO
+            registerReceiver(
+
+                object : BroadcastReceiver() {
+
+                    override fun onReceive(
+                        context: Context?,
+                        intent: Intent?
+                    ) {
+
+                        when (resultCode) {
+
+                            RESULT_OK -> {
+
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "SMS enviado com sucesso!",
+                                    Toast.LENGTH_LONG
+                                ).show()
+
+                                Log.d(
+                                    TAG,
+                                    "SMS enviado"
+                                )
+                            }
+
+                            SmsManager.RESULT_ERROR_GENERIC_FAILURE -> {
+
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "Falha genérica",
+                                    Toast.LENGTH_LONG
+                                ).show()
+
+                                Log.e(
+                                    TAG,
+                                    "Falha genérica"
+                                )
+                            }
+
+                            SmsManager.RESULT_ERROR_NO_SERVICE -> {
+
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "Sem serviço",
+                                    Toast.LENGTH_LONG
+                                ).show()
+
+                                Log.e(
+                                    TAG,
+                                    "Sem serviço"
+                                )
+                            }
+
+                            SmsManager.RESULT_ERROR_NULL_PDU -> {
+
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "PDU nulo",
+                                    Toast.LENGTH_LONG
+                                ).show()
+
+                                Log.e(
+                                    TAG,
+                                    "PDU nulo"
+                                )
+                            }
+
+                            SmsManager.RESULT_ERROR_RADIO_OFF -> {
+
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "Modo avião ativo",
+                                    Toast.LENGTH_LONG
+                                ).show()
+
+                                Log.e(
+                                    TAG,
+                                    "Rádio desligado"
+                                )
+                            }
+                        }
+                    }
+
+                },
+
+                IntentFilter(SMS_SENT),
+                Context.RECEIVER_NOT_EXPORTED
+            )
+
+            // RECEIVER ENTREGA
+            registerReceiver(
+
+                object : BroadcastReceiver() {
+
+                    override fun onReceive(
+                        context: Context?,
+                        intent: Intent?
+                    ) {
+
+                        when (resultCode) {
+
+                            RESULT_OK -> {
+
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "SMS entregue!",
+                                    Toast.LENGTH_LONG
+                                ).show()
+
+                                Log.d(
+                                    TAG,
+                                    "SMS entregue"
+                                )
+                            }
+
+                            RESULT_CANCELED -> {
+
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "SMS não entregue",
+                                    Toast.LENGTH_LONG
+                                ).show()
+
+                                Log.e(
+                                    TAG,
+                                    "Falha entrega SMS"
+                                )
+                            }
+                        }
+                    }
+
+                },
+
+                IntentFilter(SMS_DELIVERED),
+                Context.RECEIVER_NOT_EXPORTED
+            )
+
+            // DIVIDIR MENSAGEM
             val partes =
                 smsManager.divideMessage(mensagem)
 
+            // LISTAS DE CALLBACKS
+            val sentIntents =
+                ArrayList<PendingIntent>()
+
+            val deliveredIntents =
+                ArrayList<PendingIntent>()
+
+            partes.forEach {
+
+                sentIntents.add(sentPI)
+                deliveredIntents.add(deliveredPI)
+            }
+
+            // ENVIO MULTIPART
             smsManager.sendMultipartTextMessage(
                 numero,
                 null,
                 partes,
-                null,
-                null
+                sentIntents,
+                deliveredIntents
             )
-
-            Toast.makeText(
-                this,
-                "SMS enviado com sucesso!",
-                Toast.LENGTH_LONG
-            ).show()
 
         } catch (e: Exception) {
 
@@ -453,7 +629,7 @@ fun TelaSMS(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .height(180.dp),
+                                .height(100.dp),
 
                         maxLines = 8
                     )
