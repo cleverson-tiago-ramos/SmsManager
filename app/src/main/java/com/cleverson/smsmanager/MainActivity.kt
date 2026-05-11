@@ -1,47 +1,291 @@
 package com.cleverson.smsmanager
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.telephony.SmsManager
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.cleverson.smsmanager.ui.theme.SMSManagerTheme
 
 class MainActivity : ComponentActivity() {
+
+    companion object {
+        private const val TAG = "SMS_MANAGER"
+    }
+
+    private val requestPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted ->
+
+            if (isGranted) {
+
+                Toast.makeText(
+                    this,
+                    "Permissão concedida!",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                Log.d(TAG, "Permissão SEND_SMS concedida")
+
+            } else {
+
+                Toast.makeText(
+                    this,
+                    "Permissão negada!",
+                    Toast.LENGTH_SHORT
+                ).show()
+
+                Log.e(TAG, "Permissão SEND_SMS negada")
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         enableEdgeToEdge()
+
+        verificarPermissaoSMS()
+
         setContent {
+
             SMSManagerTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
+
+                Scaffold(
+                    modifier = Modifier.fillMaxSize()
+                ) { innerPadding ->
+
+                    TelaSMS(
+                        modifier = Modifier.padding(innerPadding),
+                        onEnviarSMS = { numero, mensagem ->
+
+                            enviarSMS(
+                                numero,
+                                mensagem
+                            )
+                        }
                     )
                 }
             }
         }
     }
+
+    private fun verificarPermissaoSMS() {
+
+        if (
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.SEND_SMS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+
+            requestPermissionLauncher.launch(
+                Manifest.permission.SEND_SMS
+            )
+        }
+    }
+
+    private fun enviarSMS(
+        numero: String,
+        mensagem: String
+    ) {
+
+        try {
+
+            Log.d(TAG, "Enviando SMS para: $numero")
+
+            val smsManager = SmsManager.getDefault()
+
+            val partes =
+                smsManager.divideMessage(mensagem)
+
+            smsManager.sendMultipartTextMessage(
+                numero,
+                null,
+                partes,
+                null,
+                null
+            )
+
+            Log.d(TAG, "SMS enviado com sucesso")
+
+            Toast.makeText(
+                this,
+                "SMS enviado com sucesso!",
+                Toast.LENGTH_LONG
+            ).show()
+
+        } catch (e: Exception) {
+
+            Log.e(
+                TAG,
+                "Erro ao enviar SMS",
+                e
+            )
+
+            Toast.makeText(
+                this,
+                "Erro ao enviar SMS",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
+fun TelaSMS(
+    modifier: Modifier = Modifier,
+    onEnviarSMS: (
+        String,
+        String
+    ) -> Unit
+) {
+
+    var numero by remember {
+        mutableStateOf("")
+    }
+
+    var mensagem by remember {
+        mutableStateOf("")
+    }
+
+    var loading by remember {
+        mutableStateOf(false)
+    }
+
+    val focusManager =
+        LocalFocusManager.current
+
+    Column(
         modifier = modifier
-    )
-}
+            .fillMaxSize()
+            .padding(20.dp),
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    SMSManagerTheme {
-        Greeting("Android")
+        verticalArrangement =
+            Arrangement.spacedBy(16.dp)
+    ) {
+
+        Text(
+            text = "SMS Manager",
+            style = MaterialTheme.typography.headlineLarge
+        )
+
+        OutlinedTextField(
+            value = numero,
+
+            onValueChange = {
+
+                numero = it.filter { c ->
+                    c.isDigit()
+                }
+            },
+
+            label = {
+                Text("Número")
+            },
+
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Phone
+            ),
+
+            modifier = Modifier.fillMaxWidth(),
+
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = mensagem,
+
+            onValueChange = {
+
+                if (it.length <= 160) {
+                    mensagem = it
+                }
+            },
+
+            label = {
+                Text("Mensagem")
+            },
+
+            modifier = Modifier.fillMaxWidth(),
+
+            minLines = 4
+        )
+
+        Text(
+            text = "${mensagem.length}/160 caracteres",
+            style = MaterialTheme.typography.bodySmall
+        )
+
+        Button(
+            onClick = {
+
+                focusManager.clearFocus()
+
+                when {
+
+                    numero.isEmpty() -> {
+
+                        return@Button
+                    }
+
+                    numero.length < 10 -> {
+
+                        return@Button
+                    }
+
+                    mensagem.isEmpty() -> {
+
+                        return@Button
+                    }
+
+                    else -> {
+
+                        loading = true
+
+                        onEnviarSMS(
+                            numero,
+                            mensagem
+                        )
+
+                        numero = ""
+                        mensagem = ""
+
+                        loading = false
+                    }
+                }
+            },
+
+            modifier = Modifier.fillMaxWidth(),
+
+            enabled = !loading
+        ) {
+
+            if (loading) {
+
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp
+                )
+
+            } else {
+
+                Text("Enviar SMS")
+            }
+        }
     }
 }
