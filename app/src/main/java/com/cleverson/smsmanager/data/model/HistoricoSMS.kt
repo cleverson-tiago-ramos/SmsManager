@@ -10,5 +10,7 @@ data class HistoricoSMS(
 
     val horario: String,
 
-    val status: String
+    val status: String,
+
+    val pin: String
 )

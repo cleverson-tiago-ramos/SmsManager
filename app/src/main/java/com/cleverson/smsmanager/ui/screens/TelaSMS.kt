@@ -5,24 +5,35 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import com.cleverson.smsmanager.data.model.HistoricoSMS
-import com.cleverson.smsmanager.data.model.Pais
 import com.cleverson.smsmanager.ui.components.ItemHistorico
+
+data class Pais(
+
+    val nome: String,
+
+    val codigo: String,
+
+    val bandeira: String
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TelaSMS(
-    historico: List<HistoricoSMS>,
+
+    historico:
+    SnapshotStateList<HistoricoSMS>,
+
     onEnviarSMS: (
         String,
         String
     ) -> Unit
 ) {
 
+    // PAÍSES
     val paises = listOf(
 
         Pais(
@@ -50,23 +61,31 @@ fun TelaSMS(
         )
     )
 
+    // ESTADOS
     var paisSelecionado by remember {
-        mutableStateOf(paises[0])
+
+        mutableStateOf(
+            paises[0]
+        )
     }
 
     var expandirPaises by remember {
+
         mutableStateOf(false)
     }
 
     var numero by remember {
+
         mutableStateOf("")
     }
 
     var mensagem by remember {
+
         mutableStateOf("")
     }
 
     Column(
+
         modifier =
             Modifier
                 .fillMaxSize()
@@ -74,6 +93,7 @@ fun TelaSMS(
     ) {
 
         Text(
+
             text = "SMS Manager",
 
             style =
@@ -87,7 +107,7 @@ fun TelaSMS(
                 Modifier.height(24.dp)
         )
 
-        // TELEFONE + PAÍS
+        // PAÍS + TELEFONE
         Row(
 
             modifier =
@@ -97,7 +117,7 @@ fun TelaSMS(
                 Arrangement.spacedBy(12.dp)
         ) {
 
-            // PAÍS
+            // SELECT PAÍS
             ExposedDropdownMenuBox(
 
                 expanded =
@@ -124,11 +144,6 @@ fun TelaSMS(
 
                     singleLine = true,
 
-                    label = {
-
-                        Text("País")
-                    },
-
                     modifier =
                         Modifier
                             .menuAnchor()
@@ -143,6 +158,7 @@ fun TelaSMS(
                             )
                     }
                 )
+
                 ExposedDropdownMenu(
 
                     expanded =
@@ -196,19 +212,13 @@ fun TelaSMS(
                 singleLine = true,
 
                 modifier =
-                    Modifier.weight(1f),
-
-                keyboardOptions =
-                    KeyboardOptions(
-                        keyboardType =
-                            KeyboardType.Phone
-                    )
+                    Modifier.weight(1f)
             )
         }
 
         Spacer(
             modifier =
-                Modifier.height(20.dp)
+                Modifier.height(12.dp)
         )
 
         // MENSAGEM
@@ -232,9 +242,7 @@ fun TelaSMS(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .height(120.dp),
-
-            maxLines = 6
+                    .height(120.dp)
         )
 
         Spacer(
@@ -242,34 +250,14 @@ fun TelaSMS(
                 Modifier.height(8.dp)
         )
 
-        LinearProgressIndicator(
-
-            progress = {
-                mensagem.length / 160f
-            },
-
-            modifier =
-                Modifier.fillMaxWidth()
-        )
-
-        Spacer(
-            modifier =
-                Modifier.height(4.dp)
-        )
-
         Text(
             text =
-                "${mensagem.length}/160 caracteres",
-
-            style =
-                MaterialTheme
-                    .typography
-                    .bodySmall
+                "${mensagem.length}/160 caracteres"
         )
 
         Spacer(
             modifier =
-                Modifier.height(24.dp)
+                Modifier.height(20.dp)
         )
 
         // BOTÃO
@@ -277,33 +265,23 @@ fun TelaSMS(
 
             onClick = {
 
-                if (
-                    numero.isNotEmpty() &&
-                    mensagem.isNotEmpty()
-                ) {
+                val numeroCompleto =
+                    "${paisSelecionado.codigo}$numero"
 
-                    val numeroCompleto =
-                        "${paisSelecionado.codigo}$numero"
+                onEnviarSMS(
+                    numeroCompleto,
+                    mensagem
+                )
 
-                    onEnviarSMS(
-                        numeroCompleto,
-                        mensagem
-                    )
-
-                    numero = ""
-                    mensagem = ""
-                }
+                numero = ""
+                mensagem = ""
             },
 
             modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
+                Modifier.fillMaxWidth()
         ) {
 
-            Text(
-                text = "Enviar SMS"
-            )
+            Text("Enviar SMS")
         }
 
         Spacer(
@@ -312,6 +290,7 @@ fun TelaSMS(
         )
 
         Text(
+
             text = "Histórico de SMS",
 
             style =

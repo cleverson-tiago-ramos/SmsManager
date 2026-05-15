@@ -4,10 +4,16 @@ import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import com.cleverson.smsmanager.data.model.HistoricoSMS
+import com.cleverson.smsmanager.utils.SMS_DELIVERED
 
 class SmsDeliveredReceiver(
-    private val historico: MutableList<HistoricoSMS>
+
+    private val historico:
+    SnapshotStateList<HistoricoSMS>
+
 ) : BroadcastReceiver() {
 
     override fun onReceive(
@@ -27,28 +33,42 @@ class SmsDeliveredReceiver(
                 it.id == smsId
             }
 
-        if (index != -1) {
+        if (index == -1) {
+            return
+        }
 
-            val item =
-                historico[index]
+        val novoStatus =
 
-            val novoStatus =
-                when (resultCode) {
+            when (resultCode) {
 
-                    Activity.RESULT_OK ->
-                        "📬 ENTREGUE"
+                // ENTREGUE
+                Activity.RESULT_OK -> {
 
-                    Activity.RESULT_CANCELED ->
-                        "❌ NÃO ENTREGUE"
-
-                    else ->
-                        "⚠️ FALHA ENTREGA"
+                    "📬 ENTREGUE"
                 }
 
-            historico[index] =
-                item.copy(
-                    status = novoStatus
-                )
-        }
+                // NÃO ENTREGUE
+                Activity.RESULT_CANCELED -> {
+
+                    "⚠️ NÃO ENTREGUE"
+                }
+
+                // OUTROS
+                else -> {
+
+                    "⚠️ ENTREGA DESCONHECIDA"
+                }
+            }
+
+        historico[index] =
+            historico[index].copy(
+                status = novoStatus
+            )
+    }
+
+    companion object {
+
+        fun intentFilter() =
+            IntentFilter(SMS_DELIVERED)
     }
 }

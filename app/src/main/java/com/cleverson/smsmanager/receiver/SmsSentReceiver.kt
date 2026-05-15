@@ -4,11 +4,17 @@ import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.telephony.SmsManager
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import com.cleverson.smsmanager.data.model.HistoricoSMS
+import com.cleverson.smsmanager.utils.SMS_SENT
 
 class SmsSentReceiver(
-    private val historico: MutableList<HistoricoSMS>
+
+    private val historico:
+    SnapshotStateList<HistoricoSMS>
+
 ) : BroadcastReceiver() {
 
     override fun onReceive(
@@ -28,34 +34,60 @@ class SmsSentReceiver(
                 it.id == smsId
             }
 
-        if (index != -1) {
+        if (index == -1) {
+            return
+        }
 
-            val item =
-                historico[index]
+        val novoStatus =
 
-            val novoStatus =
-                when (resultCode) {
+            when (resultCode) {
 
-                    Activity.RESULT_OK ->
-                        "✅ ENVIADO"
+                // ENVIADO
+                Activity.RESULT_OK -> {
 
-                    SmsManager.RESULT_ERROR_GENERIC_FAILURE ->
-                        "❌ FALHA"
-
-                    SmsManager.RESULT_ERROR_NO_SERVICE ->
-                        "📡 SEM SINAL"
-
-                    SmsManager.RESULT_ERROR_RADIO_OFF ->
-                        "✈️ MODO AVIÃO"
-
-                    else ->
-                        "❌ ERRO"
+                    "✅ ENVIADO"
                 }
 
-            historico[index] =
-                item.copy(
-                    status = novoStatus
-                )
-        }
+                // FALHA GENÉRICA
+                SmsManager.RESULT_ERROR_GENERIC_FAILURE -> {
+
+                    "❌ FALHA GENÉRICA"
+                }
+
+                // SEM SERVIÇO
+                SmsManager.RESULT_ERROR_NO_SERVICE -> {
+
+                    "📡 SEM SERVIÇO"
+                }
+
+                // PDU INVÁLIDO
+                SmsManager.RESULT_ERROR_NULL_PDU -> {
+
+                    "⚠️ PDU NULO"
+                }
+
+                // MODO AVIÃO
+                SmsManager.RESULT_ERROR_RADIO_OFF -> {
+
+                    "✈️ MODO AVIÃO"
+                }
+
+                // DESCONHECIDO
+                else -> {
+
+                    "⚠️ ERRO DESCONHECIDO"
+                }
+            }
+
+        historico[index] =
+            historico[index].copy(
+                status = novoStatus
+            )
+    }
+
+    companion object {
+
+        fun intentFilter() =
+            IntentFilter(SMS_SENT)
     }
 }

@@ -1,6 +1,5 @@
 package com.cleverson.smsmanager.repository
 
-import android.app.Activity
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -8,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.telephony.SmsManager
 import android.util.Log
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import com.cleverson.smsmanager.data.model.HistoricoSMS
 import com.cleverson.smsmanager.utils.SMS_DELIVERED
 import com.cleverson.smsmanager.utils.SMS_SENT
@@ -15,35 +15,30 @@ import com.cleverson.smsmanager.utils.TAG
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.atomic.AtomicInteger
 
 class SmsRepository(
     private val context: Context
 ) {
 
-    private val requestCodeCounter =
-        AtomicInteger(0)
-
     fun enviarSMS(
         numero: String,
         mensagem: String,
-        historico: MutableList<HistoricoSMS>
+        historico: SnapshotStateList<HistoricoSMS>
     ) {
 
         try {
 
-            Log.d(
-                TAG,
-                "Enviando SMS para: $numero"
-            )
-
             val smsManager =
-                context.getSystemService(
-                    SmsManager::class.java
-                )
+                SmsManager.getDefault()
 
             val smsId =
                 System.currentTimeMillis()
+
+            val pin =
+                (1000..9999).random()
+
+            val mensagemFinal =
+                "$mensagem\nPIN: $pin"
 
             val horarioAtual =
                 SimpleDateFormat(
@@ -56,9 +51,10 @@ class SmsRepository(
                 HistoricoSMS(
                     id = smsId,
                     numero = numero,
-                    mensagem = mensagem,
+                    mensagem = mensagemFinal,
                     horario = horarioAtual,
-                    status = "⏳ ENVIANDO"
+                    status = "⏳ ENVIANDO",
+                    pin = pin.toString()
                 )
             )
 
@@ -83,7 +79,7 @@ class SmsRepository(
             val sentPI =
                 PendingIntent.getBroadcast(
                     context,
-                    requestCodeCounter.incrementAndGet(),
+                    smsId.toInt(),
                     sentIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT or
                             PendingIntent.FLAG_IMMUTABLE
@@ -92,7 +88,7 @@ class SmsRepository(
             val deliveredPI =
                 PendingIntent.getBroadcast(
                     context,
-                    requestCodeCounter.incrementAndGet(),
+                    smsId.toInt() + 1,
                     deliveredIntent,
                     PendingIntent.FLAG_UPDATE_CURRENT or
                             PendingIntent.FLAG_IMMUTABLE
@@ -100,41 +96,28 @@ class SmsRepository(
 
             val partes =
                 smsManager.divideMessage(
-                    mensagem
+                    mensagemFinal
                 )
 
-            if (partes.size > 1) {
+            val sentIntents =
+                ArrayList<PendingIntent>()
 
-                val sentIntents =
-                    ArrayList<PendingIntent>()
+            val deliveredIntents =
+                ArrayList<PendingIntent>()
 
-                val deliveredIntents =
-                    ArrayList<PendingIntent>()
+            repeat(partes.size) {
 
-                repeat(partes.size) {
-
-                    sentIntents.add(sentPI)
-                    deliveredIntents.add(deliveredPI)
-                }
-
-                smsManager.sendMultipartTextMessage(
-                    numero,
-                    null,
-                    partes,
-                    sentIntents,
-                    deliveredIntents
-                )
-
-            } else {
-
-                smsManager.sendTextMessage(
-                    numero,
-                    null,
-                    mensagem,
-                    sentPI,
-                    deliveredPI
-                )
+                sentIntents.add(sentPI)
+                deliveredIntents.add(deliveredPI)
             }
+
+            smsManager.sendMultipartTextMessage(
+                numero,
+                null,
+                partes,
+                sentIntents,
+                deliveredIntents
+            )
 
             Handler(
                 Looper.getMainLooper()
