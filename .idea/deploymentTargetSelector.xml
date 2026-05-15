@@ -4,10 +4,10 @@
     <selectionStates>
       <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-05-15T02:32:40.977389538Z">
+        <DropdownSelection timestamp="2026-05-15T03:04:43.528222071Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=/home/cleverson/.android/avd/Medium_Phone.avd" />
+              <DeviceId pluginId="PhysicalDevice" identifier="serial=ypmbwghymvde6dcq" />
             </handle>
           </Target>
         </DropdownSelection>

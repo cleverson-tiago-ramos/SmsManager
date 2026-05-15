@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <!-- Permissões SMS -->
+
+    <!-- PERMISSÕES SMS -->
     <uses-permission android:name="android.permission.SEND_SMS" />
+
+    <!-- OPCIONAIS -->
     <uses-permission android:name="android.permission.RECEIVE_SMS" />
     <uses-permission android:name="android.permission.READ_SMS" />
 
@@ -16,22 +19,24 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SMSManager"
         tools:targetApi="31">
-        <activity
-            android:name=".activity_main.xml"
-            android:exported="false"
-            android:label="@string/title_activity_main.xml"
-            android:theme="@style/Theme.SMSManager" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
             android:theme="@style/Theme.SMSManager">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
 
-                <category android:name="android.intent.category.LAUNCHER" />
+            <intent-filter>
+
+                <action
+                    android:name="android.intent.action.MAIN" />
+
+                <category
+                    android:name="android.intent.category.LAUNCHER" />
+
             </intent-filter>
+
         </activity>
+
     </application>
 
 </manifest>
