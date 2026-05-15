@@ -1,6 +1,12 @@
 package com.cleverson.smsmanager
 
 import android.Manifest
+import android.app.Activity
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.telephony.SmsManager
@@ -16,6 +22,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
@@ -26,17 +34,134 @@ import com.cleverson.smsmanager.ui.theme.SMSManagerTheme
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import android.app.Activity
-import android.app.PendingIntent
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+
 class MainActivity : ComponentActivity() {
 
     companion object {
-        private const val TAG = "SMS_MANAGER"
+
+        private const val TAG =
+            "SMS_MANAGER"
+
+        private const val SMS_SENT =
+            "SMS_SENT"
+
+        private const val SMS_DELIVERED =
+            "SMS_DELIVERED"
     }
+
+    // HISTÓRICO GLOBAL
+    private val historicoState =
+        mutableStateListOf<HistoricoSMS>()
+
+    // RECEIVER ENVIO
+    private val sentReceiver =
+        object : BroadcastReceiver() {
+
+            override fun onReceive(
+                context: Context?,
+                intent: Intent?
+            ) {
+
+                val smsId =
+                    intent?.getLongExtra(
+                        "sms_id",
+                        -1
+                    ) ?: -1
+
+                val index =
+                    historicoState.indexOfFirst {
+                        it.id == smsId
+                    }
+
+                if (index != -1) {
+
+                    val item =
+                        historicoState[index]
+
+                    val novoStatus =
+                        when (resultCode) {
+
+                            Activity.RESULT_OK -> {
+                                "✅ ENVIADO"
+                            }
+
+                            SmsManager.RESULT_ERROR_GENERIC_FAILURE -> {
+                                "❌ FALHA"
+                            }
+
+                            SmsManager.RESULT_ERROR_NO_SERVICE -> {
+                                "📡 SEM SINAL"
+                            }
+
+                            SmsManager.RESULT_ERROR_NULL_PDU -> {
+                                "⚠️ PDU NULO"
+                            }
+
+                            SmsManager.RESULT_ERROR_RADIO_OFF -> {
+                                "✈️ MODO AVIÃO"
+                            }
+
+                            else -> {
+                                "❌ ERRO"
+                            }
+                        }
+
+                    historicoState[index] =
+                        item.copy(
+                            status = novoStatus
+                        )
+                }
+            }
+        }
+
+    // RECEIVER ENTREGA
+    private val deliveredReceiver =
+        object : BroadcastReceiver() {
+
+            override fun onReceive(
+                context: Context?,
+                intent: Intent?
+            ) {
+
+                val smsId =
+                    intent?.getLongExtra(
+                        "sms_id",
+                        -1
+                    ) ?: -1
+
+                val index =
+                    historicoState.indexOfFirst {
+                        it.id == smsId
+                    }
+
+                if (index != -1) {
+
+                    val item =
+                        historicoState[index]
+
+                    val novoStatus =
+                        when (resultCode) {
+
+                            Activity.RESULT_OK -> {
+                                "📬 ENTREGUE"
+                            }
+
+                            Activity.RESULT_CANCELED -> {
+                                "❌ NÃO ENTREGUE"
+                            }
+
+                            else -> {
+                                "⚠️ FALHA ENTREGA"
+                            }
+                        }
+
+                    historicoState[index] =
+                        item.copy(
+                            status = novoStatus
+                        )
+                }
+            }
+        }
 
     private val requestPermissionLauncher =
         registerForActivityResult(
@@ -62,22 +187,56 @@ class MainActivity : ComponentActivity() {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge()
 
         verificarPermissaoSMS()
 
+        // REGISTRA RECEIVERS
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+
+            registerReceiver(
+                sentReceiver,
+                IntentFilter(SMS_SENT),
+                Context.RECEIVER_NOT_EXPORTED
+            )
+
+            registerReceiver(
+                deliveredReceiver,
+                IntentFilter(SMS_DELIVERED),
+                Context.RECEIVER_NOT_EXPORTED
+            )
+
+        } else {
+
+            registerReceiver(
+                sentReceiver,
+                IntentFilter(SMS_SENT)
+            )
+
+            registerReceiver(
+                deliveredReceiver,
+                IntentFilter(SMS_DELIVERED)
+            )
+        }
+
         setContent {
 
             SMSManagerTheme {
 
                 Scaffold(
-                    modifier = Modifier.fillMaxSize()
+                    modifier =
+                        Modifier.fillMaxSize()
                 ) { innerPadding ->
 
                     TelaSMS(
-                        modifier = Modifier.padding(innerPadding),
+                        modifier =
+                            Modifier.padding(innerPadding),
+
+                        historico =
+                            historicoState,
 
                         onEnviarSMS = { numero, mensagem ->
 
@@ -90,6 +249,14 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+
+        super.onDestroy()
+
+        unregisterReceiver(sentReceiver)
+        unregisterReceiver(deliveredReceiver)
     }
 
     private fun verificarPermissaoSMS() {
@@ -120,175 +287,101 @@ class MainActivity : ComponentActivity() {
             )
 
             val smsManager =
-                SmsManager.getDefault()
+                getSystemService(
+                    SmsManager::class.java
+                )
 
-            // ACTIONS
-            val SMS_SENT =
-                "SMS_SENT"
+            // ID ÚNICO
+            val smsId =
+                System.currentTimeMillis()
 
-            val SMS_DELIVERED =
-                "SMS_DELIVERED"
+            // STATUS INICIAL
+            val horarioAtual =
+                SimpleDateFormat(
+                    "HH:mm:ss",
+                    Locale.getDefault()
+                ).format(Date())
 
-            // PENDING INTENTS
+            historicoState.add(
+                0,
+                HistoricoSMS(
+                    id = smsId,
+                    numero = numero,
+                    mensagem = mensagem,
+                    horario = horarioAtual,
+                    status = "⏳ ENVIANDO"
+                )
+            )
+
+            // INTENT ENVIO
+            val sentIntent =
+                Intent(SMS_SENT).apply {
+
+                    putExtra(
+                        "sms_id",
+                        smsId
+                    )
+                }
+            // FALLBACK DE STATUS
+            android.os.Handler(
+                mainLooper
+            ).postDelayed({
+
+                val index =
+                    historicoState.indexOfFirst {
+                        it.id == smsId &&
+                                it.status == "⏳ ENVIANDO"
+                    }
+
+                if (index != -1) {
+
+                    val item =
+                        historicoState[index]
+
+                    historicoState[index] =
+                        item.copy(
+                            status = "⚠️ SEM RETORNO"
+                        )
+                }
+
+            }, 10000)
+            // INTENT ENTREGA
+            val deliveredIntent =
+                Intent(SMS_DELIVERED).apply {
+
+                    putExtra(
+                        "sms_id",
+                        smsId
+                    )
+                }
+
+            // PENDING ENVIO
             val sentPI =
                 PendingIntent.getBroadcast(
                     this,
-                    0,
-                    Intent(SMS_SENT),
-                    PendingIntent.FLAG_IMMUTABLE
+                    smsId.toInt(),
+                    sentIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or
+                            PendingIntent.FLAG_IMMUTABLE
                 )
 
+            // PENDING ENTREGA
             val deliveredPI =
                 PendingIntent.getBroadcast(
                     this,
-                    0,
-                    Intent(SMS_DELIVERED),
-                    PendingIntent.FLAG_IMMUTABLE
+                    smsId.toInt() + 1,
+                    deliveredIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or
+                            PendingIntent.FLAG_IMMUTABLE
                 )
-
-            // RECEIVER ENVIO
-            registerReceiver(
-
-                object : BroadcastReceiver() {
-
-                    override fun onReceive(
-                        context: Context?,
-                        intent: Intent?
-                    ) {
-
-                        when (resultCode) {
-
-                            RESULT_OK -> {
-
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "SMS enviado com sucesso!",
-                                    Toast.LENGTH_LONG
-                                ).show()
-
-                                Log.d(
-                                    TAG,
-                                    "SMS enviado"
-                                )
-                            }
-
-                            SmsManager.RESULT_ERROR_GENERIC_FAILURE -> {
-
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "Falha genérica",
-                                    Toast.LENGTH_LONG
-                                ).show()
-
-                                Log.e(
-                                    TAG,
-                                    "Falha genérica"
-                                )
-                            }
-
-                            SmsManager.RESULT_ERROR_NO_SERVICE -> {
-
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "Sem serviço",
-                                    Toast.LENGTH_LONG
-                                ).show()
-
-                                Log.e(
-                                    TAG,
-                                    "Sem serviço"
-                                )
-                            }
-
-                            SmsManager.RESULT_ERROR_NULL_PDU -> {
-
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "PDU nulo",
-                                    Toast.LENGTH_LONG
-                                ).show()
-
-                                Log.e(
-                                    TAG,
-                                    "PDU nulo"
-                                )
-                            }
-
-                            SmsManager.RESULT_ERROR_RADIO_OFF -> {
-
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "Modo avião ativo",
-                                    Toast.LENGTH_LONG
-                                ).show()
-
-                                Log.e(
-                                    TAG,
-                                    "Rádio desligado"
-                                )
-                            }
-                        }
-                    }
-
-                },
-
-                IntentFilter(SMS_SENT),
-                Context.RECEIVER_NOT_EXPORTED
-            )
-
-            // RECEIVER ENTREGA
-            registerReceiver(
-
-                object : BroadcastReceiver() {
-
-                    override fun onReceive(
-                        context: Context?,
-                        intent: Intent?
-                    ) {
-
-                        when (resultCode) {
-
-                            RESULT_OK -> {
-
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "SMS entregue!",
-                                    Toast.LENGTH_LONG
-                                ).show()
-
-                                Log.d(
-                                    TAG,
-                                    "SMS entregue"
-                                )
-                            }
-
-                            RESULT_CANCELED -> {
-
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "SMS não entregue",
-                                    Toast.LENGTH_LONG
-                                ).show()
-
-                                Log.e(
-                                    TAG,
-                                    "Falha entrega SMS"
-                                )
-                            }
-                        }
-                    }
-
-                },
-
-                IntentFilter(SMS_DELIVERED),
-                Context.RECEIVER_NOT_EXPORTED
-            )
 
             // DIVIDIR MENSAGEM
             val partes =
-                smsManager.divideMessage(mensagem)
+                smsManager.divideMessage(
+                    mensagem
+                )
 
-            // LISTAS DE CALLBACKS
+            // CALLBACKS
             val sentIntents =
                 ArrayList<PendingIntent>()
 
@@ -301,14 +394,27 @@ class MainActivity : ComponentActivity() {
                 deliveredIntents.add(deliveredPI)
             }
 
-            // ENVIO MULTIPART
-            smsManager.sendMultipartTextMessage(
-                numero,
-                null,
-                partes,
-                sentIntents,
-                deliveredIntents
-            )
+            // ENVIAR
+            if (partes.size > 1) {
+
+                smsManager.sendMultipartTextMessage(
+                    numero,
+                    null,
+                    partes,
+                    sentIntents,
+                    deliveredIntents
+                )
+
+            } else {
+
+                smsManager.sendTextMessage(
+                    numero,
+                    null,
+                    mensagem,
+                    sentPI,
+                    deliveredPI
+                )
+            }
 
         } catch (e: Exception) {
 
@@ -316,6 +422,20 @@ class MainActivity : ComponentActivity() {
                 TAG,
                 "Erro ao enviar SMS",
                 e
+            )
+
+            historicoState.add(
+                0,
+                HistoricoSMS(
+                    id = System.currentTimeMillis(),
+                    numero = numero,
+                    mensagem = mensagem,
+                    horario = SimpleDateFormat(
+                        "HH:mm:ss",
+                        Locale.getDefault()
+                    ).format(Date()),
+                    status = "❌ ERRO"
+                )
             )
 
             Toast.makeText(
@@ -334,15 +454,18 @@ data class Pais(
 )
 
 data class HistoricoSMS(
+    val id: Long,
     val numero: String,
     val mensagem: String,
-    val horario: String
+    val horario: String,
+    val status: String
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TelaSMS(
     modifier: Modifier = Modifier,
+    historico: SnapshotStateList<HistoricoSMS>,
     onEnviarSMS: (
         String,
         String
@@ -379,25 +502,24 @@ fun TelaSMS(
         mutableStateOf(false)
     }
 
-    var historico by remember {
-        mutableStateOf(
-            listOf<HistoricoSMS>()
-        )
-    }
-
     val focusManager =
         LocalFocusManager.current
 
     Surface(
-        modifier = modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+        modifier =
+            modifier.fillMaxSize(),
+
+        color =
+            MaterialTheme
+                .colorScheme
+                .background
     ) {
 
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp)
-                .padding(top = 48.dp)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(24.dp)
         ) {
 
             Text(
@@ -411,17 +533,9 @@ fun TelaSMS(
 
             Spacer(
                 modifier =
-                    Modifier.height(8.dp)
+                    Modifier.height(16.dp)
             )
 
-
-
-            Spacer(
-                modifier =
-                    Modifier.height(8.dp)
-            )
-
-            // CARD TELEFONE
             ElevatedCard(
                 modifier =
                     Modifier.fillMaxWidth()
@@ -429,34 +543,27 @@ fun TelaSMS(
 
                 Column(
                     modifier =
-                        Modifier.padding(18.dp)
+                        Modifier.padding(16.dp)
                 ) {
 
                     Text(
                         text =
-                            "Número de telefone",
-
-                        style =
-                            MaterialTheme
-                                .typography
-                                .titleMedium
+                            "Número de telefone"
                     )
 
                     Spacer(
                         modifier =
-                            Modifier.height(14.dp)
+                            Modifier.height(12.dp)
                     )
 
                     Row(
                         horizontalArrangement =
-                            Arrangement.spacedBy(12.dp),
-
-                        verticalAlignment =
-                            Alignment.Top
+                            Arrangement.spacedBy(12.dp)
                     ) {
 
                         ExposedDropdownMenuBox(
-                            expanded = expandirPaises,
+                            expanded =
+                                expandirPaises,
 
                             onExpandedChange = {
 
@@ -483,13 +590,12 @@ fun TelaSMS(
                                             expanded =
                                                 expandirPaises
                                         )
-                                },
-
-                                singleLine = true
+                                }
                             )
 
                             ExposedDropdownMenu(
-                                expanded = expandirPaises,
+                                expanded =
+                                    expandirPaises,
 
                                 onDismissRequest = {
 
@@ -529,6 +635,9 @@ fun TelaSMS(
                                     }
                             },
 
+                            modifier =
+                                Modifier.weight(1f),
+
                             placeholder = {
                                 Text("43999999999")
                             },
@@ -537,43 +646,7 @@ fun TelaSMS(
                                 KeyboardOptions(
                                     keyboardType =
                                         KeyboardType.Phone
-                                ),
-
-                            modifier =
-                                Modifier.weight(1f),
-
-                            singleLine = true,
-
-                            isError =
-                                numero.isNotEmpty() &&
-                                        numero.length < 10,
-
-                            supportingText = {
-
-                                when {
-
-                                    numero.isEmpty() -> {
-
-                                        Text(
-                                            "Digite o telefone"
-                                        )
-                                    }
-
-                                    numero.length < 10 -> {
-
-                                        Text(
-                                            "Número inválido"
-                                        )
-                                    }
-
-                                    else -> {
-
-                                        Text(
-                                            "Número válido"
-                                        )
-                                    }
-                                }
-                            }
+                                )
                         )
                     }
                 }
@@ -581,10 +654,9 @@ fun TelaSMS(
 
             Spacer(
                 modifier =
-                    Modifier.height(10.dp)
+                    Modifier.height(12.dp)
             )
 
-            // CARD MENSAGEM
             ElevatedCard(
                 modifier =
                     Modifier.fillMaxWidth()
@@ -592,16 +664,11 @@ fun TelaSMS(
 
                 Column(
                     modifier =
-                        Modifier.padding(18.dp)
+                        Modifier.padding(16.dp)
                 ) {
 
                     Text(
-                        text = "Mensagem",
-
-                        style =
-                            MaterialTheme
-                                .typography
-                                .titleMedium
+                        text = "Mensagem"
                     )
 
                     Spacer(
@@ -619,24 +686,21 @@ fun TelaSMS(
                             }
                         },
 
-                        placeholder = {
-
-                            Text(
-                                "Digite sua mensagem..."
-                            )
-                        },
-
                         modifier =
                             Modifier
                                 .fillMaxWidth()
                                 .height(100.dp),
 
-                        maxLines = 8
+                        placeholder = {
+                            Text(
+                                "Digite sua mensagem..."
+                            )
+                        }
                     )
 
                     Spacer(
                         modifier =
-                            Modifier.height(12.dp)
+                            Modifier.height(8.dp)
                     )
 
                     LinearProgressIndicator(
@@ -650,17 +714,12 @@ fun TelaSMS(
 
                     Spacer(
                         modifier =
-                            Modifier.height(8.dp)
+                            Modifier.height(6.dp)
                     )
 
                     Text(
                         text =
-                            "${mensagem.length}/160 caracteres",
-
-                        style =
-                            MaterialTheme
-                                .typography
-                                .bodySmall
+                            "${mensagem.length}/160 caracteres"
                     )
                 }
             }
@@ -670,75 +729,38 @@ fun TelaSMS(
                     Modifier.height(20.dp)
             )
 
-            // BOTÃO
             Button(
                 onClick = {
 
                     focusManager.clearFocus()
 
-                    when {
-
-                        numero.isEmpty() -> {
-                            return@Button
-                        }
-
-                        numero.length < 10 -> {
-                            return@Button
-                        }
-
-                        mensagem.isEmpty() -> {
-                            return@Button
-                        }
-
-                        else -> {
-
-                            loading = true
-
-                            val numeroCompleto =
-                                "${paisSelecionado.codigo}$numero"
-
-                            onEnviarSMS(
-                                numeroCompleto,
-                                mensagem
-                            )
-
-                            val horarioAtual =
-                                SimpleDateFormat(
-                                    "HH:mm:ss",
-                                    Locale.getDefault()
-                                ).format(Date())
-
-                            historico =
-                                listOf(
-                                    HistoricoSMS(
-                                        numero =
-                                            numeroCompleto,
-
-                                        mensagem =
-                                            mensagem,
-
-                                        horario =
-                                            horarioAtual
-                                    )
-                                ) + historico
-
-                            numero = ""
-                            mensagem = ""
-
-                            loading = false
-                        }
+                    if (
+                        numero.isBlank() ||
+                        mensagem.isBlank()
+                    ) {
+                        return@Button
                     }
+
+                    loading = true
+
+                    val numeroCompleto =
+                        "${paisSelecionado.codigo}$numero"
+
+                    onEnviarSMS(
+                        numeroCompleto,
+                        mensagem
+                    )
+
+                    numero = ""
+                    mensagem = ""
+
+                    loading = false
                 },
 
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .height(60.dp),
-
-                shape =
-                    MaterialTheme
-                        .shapes
-                        .extraLarge
+                        .height(60.dp)
             ) {
 
                 if (loading) {
@@ -753,12 +775,8 @@ fun TelaSMS(
                 } else {
 
                     Text(
-                        text = "Enviar SMS",
-
-                        style =
-                            MaterialTheme
-                                .typography
-                                .titleMedium
+                        text =
+                            "Enviar SMS"
                     )
                 }
             }
@@ -769,7 +787,8 @@ fun TelaSMS(
             )
 
             Text(
-                text = "Histórico de SMS",
+                text =
+                    "Histórico de SMS",
 
                 style =
                     MaterialTheme
@@ -820,12 +839,7 @@ fun TelaSMS(
 
                             Text(
                                 text =
-                                    item.mensagem,
-
-                                style =
-                                    MaterialTheme
-                                        .typography
-                                        .bodyLarge
+                                    item.mensagem
                             )
 
                             Spacer(
@@ -835,17 +849,36 @@ fun TelaSMS(
 
                             Text(
                                 text =
-                                    "🕒 ${item.horario}",
+                                    "🕒 ${item.horario}"
+                            )
 
-                                style =
-                                    MaterialTheme
-                                        .typography
-                                        .bodySmall,
+                            Spacer(
+                                modifier =
+                                    Modifier.height(4.dp)
+                            )
+
+                            Text(
+                                text =
+                                    item.status,
 
                                 color =
-                                    MaterialTheme
-                                        .colorScheme
-                                        .primary
+                                    when {
+
+                                        item.status.contains("ENVIADO") ->
+                                            MaterialTheme.colorScheme.primary
+
+                                        item.status.contains("ENTREGUE") ->
+                                            MaterialTheme.colorScheme.primary
+
+                                        item.status.contains("FALHA") ->
+                                            MaterialTheme.colorScheme.error
+
+                                        item.status.contains("MODO AVIÃO") ->
+                                            MaterialTheme.colorScheme.error
+
+                                        else ->
+                                            MaterialTheme.colorScheme.secondary
+                                    }
                             )
                         }
                     }
