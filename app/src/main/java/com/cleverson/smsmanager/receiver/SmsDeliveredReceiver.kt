@@ -4,22 +4,20 @@ import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
-import androidx.compose.runtime.snapshots.SnapshotStateList
-import com.cleverson.smsmanager.data.model.HistoricoSMS
-import com.cleverson.smsmanager.utils.SMS_DELIVERED
+import android.util.Log
+import com.cleverson.smsmanager.store.SmsStatusStore
 
-class SmsDeliveredReceiver(
-
-    private val historico:
-    SnapshotStateList<HistoricoSMS>
-
-) : BroadcastReceiver() {
+class SmsDeliveredReceiver : BroadcastReceiver() {
 
     override fun onReceive(
         context: Context?,
         intent: Intent?
     ) {
+
+        Log.d(
+            "SMS_STATUS",
+            "DeliveredReceiver resultCode=$resultCode"
+        )
 
         val smsId =
             intent?.getLongExtra(
@@ -27,48 +25,43 @@ class SmsDeliveredReceiver(
                 -1
             ) ?: -1
 
-        val index =
-            historico.indexOfFirst {
+        when (resultCode) {
 
-                it.id == smsId
-            }
+            // ENTREGUE
+            Activity.RESULT_OK -> {
 
-        if (index == -1) {
-            return
-        }
-
-        val novoStatus =
-
-            when (resultCode) {
-
-                // ENTREGUE
-                Activity.RESULT_OK -> {
-
+                SmsStatusStore.statusMap[smsId] =
                     "📬 ENTREGUE"
-                }
 
-                // NÃO ENTREGUE
-                Activity.RESULT_CANCELED -> {
-
-                    "⚠️ NÃO ENTREGUE"
-                }
-
-                // OUTROS
-                else -> {
-
-                    "⚠️ ENTREGA DESCONHECIDA"
-                }
+                Log.d(
+                    "SMS_STATUS",
+                    "📬 SMS ENTREGUE"
+                )
             }
 
-        historico[index] =
-            historico[index].copy(
-                status = novoStatus
-            )
-    }
+            // NÃO ENTREGUE
+            Activity.RESULT_CANCELED -> {
 
-    companion object {
+                SmsStatusStore.statusMap[smsId] =
+                    "⚠️ NÃO ENTREGUE"
 
-        fun intentFilter() =
-            IntentFilter(SMS_DELIVERED)
+                Log.e(
+                    "SMS_STATUS",
+                    "⚠️ SMS NÃO ENTREGUE"
+                )
+            }
+
+            // OUTROS
+            else -> {
+
+                SmsStatusStore.statusMap[smsId] =
+                    "⚠️ ENTREGA DESCONHECIDA"
+
+                Log.e(
+                    "SMS_STATUS",
+                    "⚠️ ENTREGA DESCONHECIDA: $resultCode"
+                )
+            }
+        }
     }
 }

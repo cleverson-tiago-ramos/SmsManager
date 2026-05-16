@@ -20,6 +20,16 @@
         android:theme="@style/Theme.SMSManager"
         tools:targetApi="31">
 
+        <!-- RECEIVER ENVIO -->
+        <receiver
+            android:name=".receiver.SmsSentReceiver"
+            android:exported="false" />
+
+        <!-- RECEIVER ENTREGA -->
+        <receiver
+            android:name=".receiver.SmsDeliveredReceiver"
+            android:exported="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

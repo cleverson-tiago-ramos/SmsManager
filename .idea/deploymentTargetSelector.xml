@@ -4,10 +4,10 @@
     <selectionStates>
       <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-05-15T03:04:43.528222071Z">
+        <DropdownSelection timestamp="2026-05-15T23:34:39.993782576Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="PhysicalDevice" identifier="serial=ypmbwghymvde6dcq" />
+              <DeviceId pluginId="LocalEmulator" identifier="path=/home/cleverson/.android/avd/Pixel_4_novo.avd" />
             </handle>
           </Target>
         </DropdownSelection>

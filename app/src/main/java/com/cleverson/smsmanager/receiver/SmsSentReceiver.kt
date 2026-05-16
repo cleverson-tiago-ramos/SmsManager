@@ -4,23 +4,21 @@ import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.telephony.SmsManager
-import androidx.compose.runtime.snapshots.SnapshotStateList
-import com.cleverson.smsmanager.data.model.HistoricoSMS
-import com.cleverson.smsmanager.utils.SMS_SENT
+import android.util.Log
+import com.cleverson.smsmanager.store.SmsStatusStore
 
-class SmsSentReceiver(
-
-    private val historico:
-    SnapshotStateList<HistoricoSMS>
-
-) : BroadcastReceiver() {
+class SmsSentReceiver : BroadcastReceiver() {
 
     override fun onReceive(
         context: Context?,
         intent: Intent?
     ) {
+
+        Log.d(
+            "SMS_STATUS",
+            "SentReceiver resultCode=$resultCode"
+        )
 
         val smsId =
             intent?.getLongExtra(
@@ -28,66 +26,73 @@ class SmsSentReceiver(
                 -1
             ) ?: -1
 
-        val index =
-            historico.indexOfFirst {
+        when (resultCode) {
 
-                it.id == smsId
-            }
+            Activity.RESULT_OK -> {
 
-        if (index == -1) {
-            return
-        }
-
-        val novoStatus =
-
-            when (resultCode) {
-
-                // ENVIADO
-                Activity.RESULT_OK -> {
-
+                SmsStatusStore.statusMap[smsId] =
                     "✅ ENVIADO"
-                }
 
-                // FALHA GENÉRICA
-                SmsManager.RESULT_ERROR_GENERIC_FAILURE -> {
-
-                    "❌ FALHA GENÉRICA"
-                }
-
-                // SEM SERVIÇO
-                SmsManager.RESULT_ERROR_NO_SERVICE -> {
-
-                    "📡 SEM SERVIÇO"
-                }
-
-                // PDU INVÁLIDO
-                SmsManager.RESULT_ERROR_NULL_PDU -> {
-
-                    "⚠️ PDU NULO"
-                }
-
-                // MODO AVIÃO
-                SmsManager.RESULT_ERROR_RADIO_OFF -> {
-
-                    "✈️ MODO AVIÃO"
-                }
-
-                // DESCONHECIDO
-                else -> {
-
-                    "⚠️ ERRO DESCONHECIDO"
-                }
+                Log.d(
+                    "SMS_STATUS",
+                    "✅ SMS ENVIADO"
+                )
             }
 
-        historico[index] =
-            historico[index].copy(
-                status = novoStatus
-            )
-    }
+            SmsManager.RESULT_ERROR_GENERIC_FAILURE -> {
 
-    companion object {
+                SmsStatusStore.statusMap[smsId] =
+                    "❌ FALHA GENÉRICA"
 
-        fun intentFilter() =
-            IntentFilter(SMS_SENT)
+                Log.e(
+                    "SMS_STATUS",
+                    "❌ FALHA GENÉRICA"
+                )
+            }
+
+            SmsManager.RESULT_ERROR_NO_SERVICE -> {
+
+                SmsStatusStore.statusMap[smsId] =
+                    "📡 SEM SERVIÇO"
+
+                Log.e(
+                    "SMS_STATUS",
+                    "📡 SEM SERVIÇO"
+                )
+            }
+
+            SmsManager.RESULT_ERROR_NULL_PDU -> {
+
+                SmsStatusStore.statusMap[smsId] =
+                    "⚠️ PDU NULO"
+
+                Log.e(
+                    "SMS_STATUS",
+                    "⚠️ PDU NULO"
+                )
+            }
+
+            SmsManager.RESULT_ERROR_RADIO_OFF -> {
+
+                SmsStatusStore.statusMap[smsId] =
+                    "✈️ MODO AVIÃO"
+
+                Log.e(
+                    "SMS_STATUS",
+                    "✈️ MODO AVIÃO"
+                )
+            }
+
+            else -> {
+
+                SmsStatusStore.statusMap[smsId] =
+                    "⚠️ ERRO DESCONHECIDO"
+
+                Log.e(
+                    "SMS_STATUS",
+                    "⚠️ ERRO DESCONHECIDO: $resultCode"
+                )
+            }
+        }
     }
 }

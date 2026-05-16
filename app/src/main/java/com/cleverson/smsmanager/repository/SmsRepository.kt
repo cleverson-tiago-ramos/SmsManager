@@ -3,6 +3,7 @@ package com.cleverson.smsmanager.repository
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.telephony.SmsManager
@@ -15,7 +16,7 @@ import com.cleverson.smsmanager.utils.TAG
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
+import com.cleverson.smsmanager.store.SmsStatusStore
 class SmsRepository(
     private val context: Context
 ) {
@@ -32,7 +33,7 @@ class SmsRepository(
                 SmsManager.getDefault()
 
             val smsId =
-                System.currentTimeMillis()
+                (System.currentTimeMillis() % Int.MAX_VALUE).toLong()
 
             val pin =
                 (1000..9999).random()
@@ -59,7 +60,12 @@ class SmsRepository(
             )
 
             val sentIntent =
-                Intent(SMS_SENT).apply {
+                Intent(
+                    context,
+                    com.cleverson.smsmanager.receiver.SmsSentReceiver::class.java
+                ).apply {
+
+                    action = SMS_SENT
 
                     putExtra(
                         "sms_id",
@@ -68,12 +74,30 @@ class SmsRepository(
                 }
 
             val deliveredIntent =
-                Intent(SMS_DELIVERED).apply {
+                Intent(
+                    context,
+                    com.cleverson.smsmanager.receiver.SmsDeliveredReceiver::class.java
+                ).apply {
+
+                    action = SMS_DELIVERED
 
                     putExtra(
                         "sms_id",
                         smsId
                     )
+                }
+            val flags =
+                if (
+                    Build.VERSION.SDK_INT >=
+                    Build.VERSION_CODES.S
+                ) {
+
+                    PendingIntent.FLAG_UPDATE_CURRENT or
+                            PendingIntent.FLAG_IMMUTABLE
+
+                } else {
+
+                    PendingIntent.FLAG_UPDATE_CURRENT
                 }
 
             val sentPI =
@@ -81,8 +105,7 @@ class SmsRepository(
                     context,
                     smsId.toInt(),
                     sentIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or
-                            PendingIntent.FLAG_IMMUTABLE
+                    flags
                 )
 
             val deliveredPI =
@@ -90,34 +113,57 @@ class SmsRepository(
                     context,
                     smsId.toInt() + 1,
                     deliveredIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or
-                            PendingIntent.FLAG_IMMUTABLE
+                    flags
                 )
 
-            val partes =
-                smsManager.divideMessage(
-                    mensagemFinal
+            // =========================
+            // ENVIO SMS
+            // =========================
+
+            if (mensagemFinal.length > 160) {
+
+                val partes =
+                    smsManager.divideMessage(
+                        mensagemFinal
+                    )
+
+                val sentIntents =
+                    ArrayList<PendingIntent>()
+
+                val deliveredIntents =
+                    ArrayList<PendingIntent>()
+
+                repeat(partes.size) {
+
+                    sentIntents.add(sentPI)
+                    deliveredIntents.add(deliveredPI)
+                }
+
+                smsManager.sendMultipartTextMessage(
+                    numero,
+                    null,
+                    partes,
+                    sentIntents,
+                    deliveredIntents
                 )
 
-            val sentIntents =
-                ArrayList<PendingIntent>()
-
-            val deliveredIntents =
-                ArrayList<PendingIntent>()
-
-            repeat(partes.size) {
-
-                sentIntents.add(sentPI)
-                deliveredIntents.add(deliveredPI)
+            } else {
+                Log.d(
+                    "SMS_STATUS",
+                    "Tentando enviar SMS para $numero"
+                )
+                smsManager.sendTextMessage(
+                    numero,
+                    null,
+                    mensagemFinal,
+                    sentPI,
+                    deliveredPI
+                )
             }
 
-            smsManager.sendMultipartTextMessage(
-                numero,
-                null,
-                partes,
-                sentIntents,
-                deliveredIntents
-            )
+            // =========================
+            // TIMEOUT
+            // =========================
 
             Handler(
                 Looper.getMainLooper()
@@ -126,15 +172,20 @@ class SmsRepository(
                 val index =
                     historico.indexOfFirst {
 
-                        it.id == smsId &&
-                                it.status == "⏳ ENVIANDO"
+                        it.id == smsId
                     }
 
                 if (index != -1) {
 
+                    val novoStatus =
+                        SmsStatusStore.statusMap[smsId]
+
                     historico[index] =
                         historico[index].copy(
-                            status = "⚠️ SEM RETORNO"
+
+                            status =
+                                novoStatus
+                                    ?: "⚠️ SEM RETORNO"
                         )
                 }
 
@@ -142,8 +193,9 @@ class SmsRepository(
 
         } catch (e: Exception) {
 
+
             Log.e(
-                TAG,
+                "SMS_STATUS",
                 "Erro ao enviar SMS",
                 e
             )

@@ -47,19 +47,7 @@ class MainActivity : ComponentActivity() {
         smsRepository =
             SmsRepository(this)
 
-        // RECEIVER ENVIO
-        registerReceiver(
-            SmsSentReceiver(historico),
-            SmsSentReceiver.intentFilter(),
-            RECEIVER_NOT_EXPORTED
-        )
 
-        // RECEIVER ENTREGA
-        registerReceiver(
-            SmsDeliveredReceiver(historico),
-            SmsDeliveredReceiver.intentFilter(),
-            RECEIVER_NOT_EXPORTED
-        )
 
         setContent {
 
